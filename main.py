@@ -5,7 +5,6 @@ import sqlite3
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-      
         self.con = sqlite3.connect("patient.db")
         self.cursor = self.con.cursor()
         self.cursor.execute("CREATE TABLE IF NOT EXISTS patient (name TEXT, age TEXT, complaint TEXT, doctor TEXT)")
@@ -63,7 +62,6 @@ class MainWindow(QMainWindow):
         main_layout.addLayout(button_layout)
 
         central_widget.setLayout(main_layout)
-
     def submit(self):
         name = self.name_input.text()
         age = (self.age_input.currentText())
@@ -89,7 +87,6 @@ class MainWindow(QMainWindow):
             self.doctor_window = DoctorWindow(self)
             self.doctor_window.closed.connect(self.doctor_closed)
             self.doctor_window.show()
-
     def doctor_closed(self):
         self.setEnabled(True)
         self.doctor_window = None
@@ -113,22 +110,19 @@ class DoctorWindow(QDialog):
         Dr. John Doe received his medical degree from Harvard Medical School in 2005.
         He completed his residency in internal medicine at Massachusetts General Hospital and is board-certified in internal medicine.
         Dr. Doe has been practicing medicine for over 15 years and is committed to providing his patients with the highest quality care."""
-        
         self.doctorJaneSmith = """
         Dr. Jane Smith earned her medical degree from the University of California, San Francisco in 2010.
         She completed her residency in pediatrics at Children's Hospital Los Angeles and is board-certified in pediatrics.
         Dr. Smith has a passion for working with children and their families, and strives to make each visit a positive and comfortable experience."""
-
         self.doctorMichaelLee = """Dr. Michael Lee received his medical degree from Stanford University School of Medicine in 2008.
         He completed his residency in neurology at the University of California, San Francisco and is board-certified in neurology.
         Dr. Lee has a special interest in the treatment of migraines and other chronic headaches, and is dedicated to helping his patients achieve relief and improve their quality of life."""
-    
+
         self.doctors_label = QLabel("Doctors:")
         self.doctors_list = QListWidget()
         self.doctors_list.addItem("Dr. John Doe")
         self.doctors_list.addItem("Dr. Jane Smith")
         self.doctors_list.addItem("Dr. Michael Lee")
-        
 
         self.show_doctor_button = QPushButton("Show Doctor's Information")
         self.show_doctor_button.clicked.connect(self.show_doctor)
@@ -160,46 +154,36 @@ class DoctorWindow(QDialog):
         selected_appointment = self.appointments_list.currentItem()
         if selected_appointment is not None:
             message_box = QMessageBox()
-            message_box.setText(
-                f"Are you sure you want to delete appointment:\n{selected_appointment.text()}?")
-            message_box.setStandardButtons(
-                QMessageBox.Yes | QMessageBox.Cancel)
+            message_box.setText("Are you sure you want to delete appointment?")
+            message_box.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
             message_box.setDefaultButton(QMessageBox.Cancel)
             result = message_box.exec_()
             if result == QMessageBox.Yes:
-                self.appointments_list.takeItem(
-                    self.appointments_list.row(selected_appointment))
-
-    # def show_appointment(self):
-    #     selected_appointment = self.appointments_list.currentItem()
-    #     if selected_appointment is not None:
-    #         appointment_info = selected_appointment.text()
-    #         message_box = QMessageBox()
-    #         message_box.setWindowTitle("Appointment Information")
-    #         message_box.setText(appointment_info)
-    #         message_box.exec_()
+                conn = sqlite3.connect('patient.db')
+                c = conn.cursor()
+                appointment_info = selected_appointment.text().split('\n')
+                name = appointment_info[0].split(':')[1].strip()
+                age = appointment_info[1].split(':')[1].strip()
+                message = appointment_info[2].split(':')[1].strip()
+                doctor = appointment_info[3].split(':')[1].strip()
+                c.execute(f"DELETE FROM patient WHERE Name='{name}' AND Age='{age}' AND Complaint='{message}' AND Doctor='{doctor}'")
+                conn.commit()
+                c.close()
+                conn.close()
+                self.appointments_list.takeItem(self.appointments_list.row(selected_appointment))
 
     def show_appointment(self):
         conn = sqlite3.connect('patient.db')
         appointments = conn.execute("SELECT * FROM patient")
-        message_box = QMessageBox()
-        message_box.setWindowTitle("Appointment Information")
-        message = ""
+        self.appointments_list.clear()
         for appointment in appointments:
-            message += f"Name: {appointment[0]}\nAge: {appointment[1]}\nMessage: {appointment[2]}\nDoctor: {appointment[3]}\n\n"
-        message_box.setText(message)
-        message_box.exec_()
+            name = appointment[0]
+            age = appointment[1]
+            message = appointment[2]
+            doctor = appointment[3]
+            item = QListWidgetItem(f"Name: {name}\nAge: {age}\nMessage: {message}\nDoctor: {doctor}\n\n")
+            self.appointments_list.addItem(item)
         conn.close()
-
-
-
-
-
-
-
-
-
-    
 
     def show_doctor(self):
         selected_doctor = self.doctors_list.currentItem()
