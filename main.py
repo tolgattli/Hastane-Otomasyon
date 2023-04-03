@@ -88,7 +88,6 @@ class MainWindow(QMainWindow):
             self.setEnabled(False)
             self.doctor_window = DoctorWindow(self)
             self.doctor_window.closed.connect(self.doctor_closed)
-            # doctor_window = DoctorWindow(self)
             self.doctor_window.show()
 
     def doctor_closed(self):
@@ -171,15 +170,36 @@ class DoctorWindow(QDialog):
                 self.appointments_list.takeItem(
                     self.appointments_list.row(selected_appointment))
 
-    def show_appointment(self):
-        selected_appointment = self.appointments_list.currentItem()
-        if selected_appointment is not None:
-            appointment_info = selected_appointment.text()
-            message_box = QMessageBox()
-            message_box.setWindowTitle("Appointment Information")
-            message_box.setText(appointment_info)
-            message_box.exec_()
+    # def show_appointment(self):
+    #     selected_appointment = self.appointments_list.currentItem()
+    #     if selected_appointment is not None:
+    #         appointment_info = selected_appointment.text()
+    #         message_box = QMessageBox()
+    #         message_box.setWindowTitle("Appointment Information")
+    #         message_box.setText(appointment_info)
+    #         message_box.exec_()
 
+    def show_appointment(self):
+        conn = sqlite3.connect('patient.db')
+        appointments = conn.execute("SELECT * FROM patient")
+        message_box = QMessageBox()
+        message_box.setWindowTitle("Appointment Information")
+        message = ""
+        for appointment in appointments:
+            message += f"Name: {appointment[0]}\nAge: {appointment[1]}\nMessage: {appointment[2]}\nDoctor: {appointment[3]}\n\n"
+        message_box.setText(message)
+        message_box.exec_()
+        conn.close()
+
+
+
+
+
+
+
+
+
+    
 
     def show_doctor(self):
         selected_doctor = self.doctors_list.currentItem()
