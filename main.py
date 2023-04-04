@@ -10,9 +10,9 @@ class MainWindow(QMainWindow):
         self.cursor.execute("CREATE TABLE IF NOT EXISTS patient (name TEXT, age TEXT, complaint TEXT, doctor TEXT)")
         self.con.commit()
 
-        self.condr = sqlite3.connect("doctorpanel.db")
-        self.cursordb = self.condr.cursor()
-        self.cursordb.execute("CREATE TABLE IF NOT EXISTS doctor (name TEXT, appointment TEXT, information TEXT)")
+        # self.condr = sqlite3.connect("doctorpanel.db")
+        # self.cursordb = self.condr.cursor()
+        # self.cursordb.execute("CREATE TABLE IF NOT EXISTS doctor (name TEXT, appointment TEXT, information TEXT)")
 
         self.setWindowTitle("Patient Complaint Form")
         self.setFixedSize(500, 500)
@@ -79,14 +79,20 @@ class MainWindow(QMainWindow):
         message_box.exec_()
 
     def doctor_login(self):
-        password, ok = QInputDialog.getText(
-            self, 'Doctor Login', 'Enter password:', QLineEdit.Password)
+        password, ok = QInputDialog.getText(self, 'Doctor Login', 'Enter password:', QLineEdit.Password)
+        doctors = {'Dr. John Doe': '1234', 'Dr. Jane Smith': '4567', 'Dr. Michael Lee': '7890'}
+        if ok and password in doctors.values():
+            for doctor, pwd in doctors.items():
+                if password == pwd:
+                    self.setEnabled(False)
+                    self.doctor_window = DoctorWindow(self,doctor)
+                    self.doctor_window.closed.connect(self.doctor_closed)
+                    self.doctor_window.show()
+                    break
+        else:
+            QMessageBox.warning(self, 'Error', 'Invalid password!')
 
-        if ok and password == "123":
-            self.setEnabled(False)
-            self.doctor_window = DoctorWindow(self)
-            self.doctor_window.closed.connect(self.doctor_closed)
-            self.doctor_window.show()
+
     def doctor_closed(self):
         self.setEnabled(True)
         self.doctor_window = None
@@ -94,10 +100,11 @@ class MainWindow(QMainWindow):
 class DoctorWindow(QDialog):
     closed = pyqtSignal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None,doctor= None):
         super().__init__(parent)
         self.setWindowTitle("Doctor Panel")
         self.setFixedSize(700, 400)
+        self.doctor = doctor
 
         self.appointments_label = QLabel("Appointments:")
         self.appointments_list = QListWidget()
@@ -172,9 +179,9 @@ class DoctorWindow(QDialog):
                 conn.close()
                 self.appointments_list.takeItem(self.appointments_list.row(selected_appointment))
 
-    def show_appointment(self):
+    def show_appointment(self, doctor):
         conn = sqlite3.connect('patient.db')
-        appointments = conn.execute("SELECT * FROM patient")
+        appointments = conn.execute(f"SELECT * FROM patient WHERE doctor='{self.doctor}'")
         self.appointments_list.clear()
         for appointment in appointments:
             name = appointment[0]
@@ -184,6 +191,7 @@ class DoctorWindow(QDialog):
             item = QListWidgetItem(f"Name: {name}\nAge: {age}\nMessage: {message}\nDoctor: {doctor}\n\n")
             self.appointments_list.addItem(item)
         conn.close()
+
 
     def show_doctor(self):
         selected_doctor = self.doctors_list.currentItem()
