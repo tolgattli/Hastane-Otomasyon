@@ -138,11 +138,11 @@ class DoctorWindow(QDialog):
 
         layout = QVBoxLayout()
 
-        doctor_buttons = QHBoxLayout()
+        bottom_buttons = QHBoxLayout()
         appt_buttons = QHBoxLayout()
 
-        doctor_buttons.addWidget(self.show_doctor_button)
-        
+        bottom_buttons.addWidget(self.show_doctor_button)
+        bottom_buttons.addWidget(self.exit_button)
         appt_buttons.addWidget(self.delete_appointment_button)
         appt_buttons.addWidget(self.show_appointment_button)
 
@@ -152,8 +152,8 @@ class DoctorWindow(QDialog):
         layout.addLayout(appt_buttons)
         layout.addWidget(self.doctors_label)
         layout.addWidget(self.doctors_list)
-        layout.addLayout(doctor_buttons)
-        layout.addWidget(self.exit_button)
+        layout.addLayout(bottom_buttons)
+        # layout.addWidget(self.exit_button)
 
         self.setLayout(layout)
 
