@@ -180,26 +180,37 @@ class DoctorWindow(QDialog):
         selected_appointment = self.appointments_list.currentItem()
         if selected_appointment is not None:
             message_box = QMessageBox()
-            message_box.setText("Are you sure you want to delete appointment?")
-            message_box.setStandardButtons(
-                QMessageBox.Yes | QMessageBox.Cancel)
+            message_box.setText("Are you sure you want to delete the appointment?")
+            message_box.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
             message_box.setDefaultButton(QMessageBox.Cancel)
             result = message_box.exec_()
             if result == QMessageBox.Yes:
                 conn = sqlite3.connect('patient.db')
                 c = conn.cursor()
-                appointment_info = selected_appointment.text().split('\n')
-                name = appointment_info[0].split(':')[1].strip()
-                age = appointment_info[1].split(':')[1].strip()
-                message = appointment_info[2].split(':')[1].strip()
-                doctor = appointment_info[3].split(':')[1].strip()
-                c.execute(
-                    f"DELETE FROM patient WHERE Name='{name}' AND Age='{age}' AND Complaint='{message}' AND Doctor='{doctor}'")
+                appointment_text = selected_appointment.text()
+                name = ""
+                age = ""
+                message = ""
+                doctor = ""
+                
+                lines = appointment_text.split('\n')
+                for line in lines:
+                    if line.startswith("Full Name:"):
+                        name = line.split(':')[1].strip()
+                    elif line.startswith("Age:"):
+                        age = line.split(':')[1].strip()
+                    elif line.startswith("Complaint:"):
+                        complaint = line.split(':')[1].strip()
+                    elif line.startswith("Doctor:"):
+                        doctor = line.split(':')[1].strip()
+                
+                c.execute(f"DELETE FROM patient WHERE Name='{name}' AND Age='{age}' AND Complaint='{message}' AND Doctor='{doctor}'")
                 conn.commit()
                 c.close()
                 conn.close()
-                self.appointments_list.takeItem(
-                    self.appointments_list.row(selected_appointment))
+                self.appointments_list.takeItem(self.appointments_list.row(selected_appointment))
+
+
 
     def setSelectedApp(self):
         self.selectedAppointment = self.appointments_list.selectedItems()[
