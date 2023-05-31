@@ -231,7 +231,8 @@ class DoctorWindow(QDialog):
                     cursor.execute(
                         f"DELETE FROM patient WHERE Name='{name}' AND Age='{age}' AND Complaint='{message}' AND Doctor='{doctor}'")
                     conn.commit()
-
+            else:
+                return
         items = self.appointments_list.findItems(name, Qt.MatchExactly)
         if items:
             item = items[0]
