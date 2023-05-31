@@ -7,12 +7,13 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.con = sqlite3.connect("patient.db")
         self.cursor = self.con.cursor()
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS patient (name TEXT, age TEXT, complaint TEXT, doctor TEXT)")
+        self.cursor.execute(
+            "CREATE TABLE IF NOT EXISTS patient (name TEXT, age TEXT, complaint TEXT, doctor TEXT)")
         self.con.commit()
 
-        self.condr = sqlite3.connect("doctorpanel.db")
-        self.cursordb = self.condr.cursor()
-        self.cursordb.execute("CREATE TABLE IF NOT EXISTS doctor (name TEXT, appointment TEXT, information TEXT)")
+        # self.condr = sqlite3.connect("doctorpanel.db")
+        # self.cursordb = self.condr.cursor()
+        # self.cursordb.execute("CREATE TABLE IF NOT EXISTS doctor (name TEXT, appointment TEXT, information TEXT)")
 
         self.setWindowTitle("Patient Complaint Form")
         self.setFixedSize(500, 500)
@@ -22,7 +23,7 @@ class MainWindow(QMainWindow):
 
         self.doctor_window = None
 
-        self.name_label = QLabel("Name:")
+        self.name_label = QLabel("Full Name:")
         self.name_input = QLineEdit()
 
         self.age_label = QLabel("Age:")
@@ -62,31 +63,48 @@ class MainWindow(QMainWindow):
         main_layout.addLayout(button_layout)
 
         central_widget.setLayout(main_layout)
+
     def submit(self):
         name = self.name_input.text()
         age = (self.age_input.currentText())
         complaint = self.complaint_input.toPlainText()
         doctor = self.doctor_input.currentText()
+        if name == "" or complaint == "":
+            message_box = QMessageBox()
+            message_box.setText(
+                "You entered an invalid value. Please check your appointment details")
+            message_box.exec_()
+
+            return
+
         self.add_appointment_database(name, age, complaint, doctor)
 
     def add_appointment_database(self, name, age, complaint, doctor):
-        self.cursor.execute("INSERT INTO patient VALUES(?,?,?,?)", (name, age, complaint, doctor))
+        self.cursor.execute(
+            "INSERT INTO patient VALUES(?,?,?,?)", (name, age, complaint, doctor))
         self.con.commit()
 
         message_box = QMessageBox()
         message_box.setText(
-            f"Name: {name}\nAge: {age}\nComplaint: {complaint}\nDoctor: {doctor}")
+            "You have set up an appointment. Thank you for choosing our hospital.")
         message_box.exec_()
 
     def doctor_login(self):
         password, ok = QInputDialog.getText(
             self, 'Doctor Login', 'Enter password:', QLineEdit.Password)
+        doctors = {'Dr. John Doe': '1234',
+                   'Dr. Jane Smith': '4567', 'Dr. Michael Lee': '7890'}
+        if ok and password in doctors.values():
+            for doctor, pwd in doctors.items():
+                if password == pwd:
+                    self.setEnabled(False)
+                    self.doctor_window = DoctorWindow(self, doctor)
+                    self.doctor_window.closed.connect(self.doctor_closed)
+                    self.doctor_window.show()
+                    break
+        else:
+            QMessageBox.warning(self, 'Error', 'Invalid password!')
 
-        if ok and password == "123":
-            self.setEnabled(False)
-            self.doctor_window = DoctorWindow(self)
-            self.doctor_window.closed.connect(self.doctor_closed)
-            self.doctor_window.show()
     def doctor_closed(self):
         self.setEnabled(True)
         self.doctor_window = None
@@ -94,18 +112,24 @@ class MainWindow(QMainWindow):
 class DoctorWindow(QDialog):
     closed = pyqtSignal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, doctor=None):
         super().__init__(parent)
         self.setWindowTitle("Doctor Panel")
         self.setFixedSize(700, 400)
+        self.doctor = doctor
+        self.selectedAppointment = []
 
         self.appointments_label = QLabel("Appointments:")
         self.appointments_list = QListWidget()
+        self.appointments_list.itemSelectionChanged.connect(
+            self.setSelectedApp)
         self.show_appointment_button = QPushButton("Show Appointment")
-        self.show_appointment_button.clicked.connect(self.show_appointment)
+        self.show_appointment_button.clicked.connect(
+            self.show_appointment)
         self.delete_appointment_button = QPushButton("Delete Appointment")
         self.delete_appointment_button.clicked.connect(self.delete_appointment)
-    
+        self.appointments_list.addItems(self.setAppointments())
+
         self.doctorJohnDoe = """
         Dr. John Doe received his medical degree from Harvard Medical School in 2005.
         He completed his residency in internal medicine at Massachusetts General Hospital and is board-certified in internal medicine.
@@ -131,11 +155,11 @@ class DoctorWindow(QDialog):
 
         layout = QVBoxLayout()
 
-        doctor_buttons = QHBoxLayout()
+        bottom_buttons = QHBoxLayout()
         appt_buttons = QHBoxLayout()
 
-        doctor_buttons.addWidget(self.show_doctor_button)
-        
+        bottom_buttons.addWidget(self.show_doctor_button)
+        bottom_buttons.addWidget(self.exit_button)
         appt_buttons.addWidget(self.delete_appointment_button)
         appt_buttons.addWidget(self.show_appointment_button)
 
@@ -145,16 +169,32 @@ class DoctorWindow(QDialog):
         layout.addLayout(appt_buttons)
         layout.addWidget(self.doctors_label)
         layout.addWidget(self.doctors_list)
-        layout.addLayout(doctor_buttons)
-        layout.addWidget(self.exit_button)
+        layout.addLayout(bottom_buttons)
 
         self.setLayout(layout)
 
-    def delete_appointment(self):
-        selected_appointment = self.appointments_list.currentItem()
-        if selected_appointment is not None:
+    def show_appointment(self):
+        conn = sqlite3.connect('patient.db')
+        cursor = conn.cursor()
+        a = []
+        appointments = cursor.execute(
+            f"SELECT * FROM patient WHERE doctor='{self.doctor}'")
+        for appointment in appointments:
+            if appointment[0] == self.selectedAppointment:
+                pass
+                a = list(appointment)
+        if a != []:
             message_box = QMessageBox()
-            message_box.setText("Are you sure you want to delete appointment?")
+            message_box.setText(
+                f"Full Name: {a[0]}\nAge: {a[1]}\nComplaint: {a[2]}\nDoctor: {a[3]}")
+            message_box.exec_()
+
+    def delete_appointment(self):
+        selected_appointments = self.appointments_list.selectedItems()
+        if selected_appointments:
+            selected_appointment = selected_appointments[0]
+            message_box = QMessageBox()
+            message_box.setText("Are you sure you want to delete the appointment?")
             message_box.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
             message_box.setDefaultButton(QMessageBox.Cancel)
             result = message_box.exec_()
@@ -162,28 +202,49 @@ class DoctorWindow(QDialog):
                 conn = sqlite3.connect('patient.db')
                 c = conn.cursor()
                 appointment_info = selected_appointment.text().split('\n')
-                name = appointment_info[0].split(':')[1].strip()
-                age = appointment_info[1].split(':')[1].strip()
-                message = appointment_info[2].split(':')[1].strip()
-                doctor = appointment_info[3].split(':')[1].strip()
-                c.execute(f"DELETE FROM patient WHERE Name='{name}' AND Age='{age}' AND Complaint='{message}' AND Doctor='{doctor}'")
-                conn.commit()
+
+                a = []
+
+                appointments = c.execute(f"SELECT * FROM patient WHERE doctor='{self.doctor}'")
+                for appointment in appointments:
+                    if appointment[0] == appointment_info[0]:
+                        a = list(appointment)
+                        break
+
+                if a:
+                    name = a[0]
+                    age = a[1]
+                    message = a[2]
+                    doctor = a[3]
+
+                    c.execute(f"DELETE FROM patient WHERE Name='{name}' AND Age='{age}' AND Complaint='{message}' AND Doctor='{doctor}'")
+                    conn.commit()
+
                 c.close()
                 conn.close()
                 self.appointments_list.takeItem(self.appointments_list.row(selected_appointment))
 
-    def show_appointment(self):
+
+
+        conn.close()    
+
+    def setSelectedApp(self):
+        selected_items = self.appointments_list.selectedItems()
+        if selected_items:
+            self.selectedAppointment = selected_items[0].text()
+
+
+    def setAppointments(self):
+        listOfAppointments = []
         conn = sqlite3.connect('patient.db')
-        appointments = conn.execute("SELECT * FROM patient")
-        self.appointments_list.clear()
+        cursor = conn.cursor()
+        appointments = cursor.execute(
+            f"SELECT * FROM patient WHERE doctor='{self.doctor}'")
         for appointment in appointments:
-            name = appointment[0]
-            age = appointment[1]
-            message = appointment[2]
-            doctor = appointment[3]
-            item = QListWidgetItem(f"Name: {name}\nAge: {age}\nMessage: {message}\nDoctor: {doctor}\n\n")
-            self.appointments_list.addItem(item)
-        conn.close()
+            item = f"{appointment[0]}"
+            listOfAppointments.append(item)
+
+        return listOfAppointments
 
     def show_doctor(self):
         selected_doctor = self.doctors_list.currentItem()
