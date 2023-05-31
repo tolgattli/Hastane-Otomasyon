@@ -2,7 +2,6 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QGridLayout,
 from PyQt5.QtCore import pyqtSignal
 import sqlite3
 
-
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -70,7 +69,6 @@ class MainWindow(QMainWindow):
         age = (self.age_input.currentText())
         complaint = self.complaint_input.toPlainText()
         doctor = self.doctor_input.currentText()
-
         if name == "" or complaint == "":
             message_box = QMessageBox()
             message_box.setText(
@@ -80,6 +78,11 @@ class MainWindow(QMainWindow):
             return
 
         self.add_appointment_database(name, age, complaint, doctor)
+        # submitten sonra clear etmek içşn
+        self.name_input.clear()
+        self.age_input.setCurrentIndex(0)
+        self.complaint_input.clear()
+        self.doctor_input.setCurrentIndex(0)
 
     def add_appointment_database(self, name, age, complaint, doctor):
         self.cursor.execute(
@@ -110,7 +113,6 @@ class MainWindow(QMainWindow):
     def doctor_closed(self):
         self.setEnabled(True)
         self.doctor_window = None
-
 
 class DoctorWindow(QDialog):
     closed = pyqtSignal()
@@ -176,58 +178,6 @@ class DoctorWindow(QDialog):
 
         self.setLayout(layout)
 
-    def delete_appointment(self):
-        selected_appointment = self.appointments_list.currentItem()
-        if selected_appointment is not None:
-            message_box = QMessageBox()
-            message_box.setText("Are you sure you want to delete the appointment?")
-            message_box.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
-            message_box.setDefaultButton(QMessageBox.Cancel)
-            result = message_box.exec_()
-            if result == QMessageBox.Yes:
-                conn = sqlite3.connect('patient.db')
-                c = conn.cursor()
-                appointment_text = selected_appointment.text()
-                name = ""
-                age = ""
-                message = ""
-                doctor = ""
-                
-                lines = appointment_text.split('\n')
-                for line in lines:
-                    if line.startswith("Full Name:"):
-                        name = line.split(':')[1].strip()
-                    elif line.startswith("Age:"):
-                        age = line.split(':')[1].strip()
-                    elif line.startswith("Complaint:"):
-                        complaint = line.split(':')[1].strip()
-                    elif line.startswith("Doctor:"):
-                        doctor = line.split(':')[1].strip()
-                
-                c.execute(f"DELETE FROM patient WHERE Name='{name}' AND Age='{age}' AND Complaint='{message}' AND Doctor='{doctor}'")
-                conn.commit()
-                c.close()
-                conn.close()
-                self.appointments_list.takeItem(self.appointments_list.row(selected_appointment))
-
-
-
-    def setSelectedApp(self):
-        self.selectedAppointment = self.appointments_list.selectedItems()[
-            0].text()
-
-    def setAppointments(self):
-        listOfAppointments = []
-        conn = sqlite3.connect('patient.db')
-        cursor = conn.cursor()
-        appointments = cursor.execute(
-            f"SELECT * FROM patient WHERE doctor='{self.doctor}'")
-        for appointment in appointments:
-            item = f"{appointment[0]}"
-            listOfAppointments.append(item)
-
-        return listOfAppointments
-
     def show_appointment(self):
         conn = sqlite3.connect('patient.db')
         cursor = conn.cursor()
@@ -244,7 +194,62 @@ class DoctorWindow(QDialog):
                 f"Full Name: {a[0]}\nAge: {a[1]}\nComplaint: {a[2]}\nDoctor: {a[3]}")
             message_box.exec_()
 
-        conn.close()
+    def delete_appointment(self):
+        selected_appointments = self.appointments_list.selectedItems()
+        if selected_appointments:
+            selected_appointment = selected_appointments[0]
+            message_box = QMessageBox()
+            message_box.setText("Are you sure you want to delete the appointment?")
+            message_box.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
+            message_box.setDefaultButton(QMessageBox.Cancel)
+            result = message_box.exec_()
+            if result == QMessageBox.Yes:
+                conn = sqlite3.connect('patient.db')
+                c = conn.cursor()
+                appointment_info = selected_appointment.text().split('\n')
+
+                a = []
+
+                appointments = c.execute(f"SELECT * FROM patient WHERE doctor='{self.doctor}'")
+                for appointment in appointments:
+                    if appointment[0] == appointment_info[0]:
+                        a = list(appointment)
+                        break
+
+                if a:
+                    name = a[0]
+                    age = a[1]
+                    message = a[2]
+                    doctor = a[3]
+
+                    c.execute(f"DELETE FROM patient WHERE Name='{name}' AND Age='{age}' AND Complaint='{message}' AND Doctor='{doctor}'")
+                    conn.commit()
+
+                c.close()
+                conn.close()
+                self.appointments_list.takeItem(self.appointments_list.row(selected_appointment))
+
+
+
+        conn.close()    
+
+    def setSelectedApp(self):
+        selected_items = self.appointments_list.selectedItems()
+        if selected_items:
+            self.selectedAppointment = selected_items[0].text()
+
+
+    def setAppointments(self):
+        listOfAppointments = []
+        conn = sqlite3.connect('patient.db')
+        cursor = conn.cursor()
+        appointments = cursor.execute(
+            f"SELECT * FROM patient WHERE doctor='{self.doctor}'")
+        for appointment in appointments:
+            item = f"{appointment[0]}"
+            listOfAppointments.append(item)
+
+        return listOfAppointments
 
     def show_doctor(self):
         selected_doctor = self.doctors_list.currentItem()
@@ -265,7 +270,6 @@ class DoctorWindow(QDialog):
     def exit(self):
         self.closed.emit()
         self.close()
-
 
 if __name__ == '__main__':
     app = QApplication([])
